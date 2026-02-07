@@ -5,6 +5,7 @@
 	import { api, type CloudFile, type ActivityLog, type Share } from '$lib/api/client';
 
 	let isLoading = true;
+	let activeTab = 'home';
 	let stats = {
 		recentFiles: [] as CloudFile[],
 		totalFiles: 0,
@@ -13,6 +14,14 @@
 		shares: [] as Share[],
 		recentActivity: [] as ActivityLog[]
 	};
+
+	// Filtered files by type
+	$: recentPhotos = stats.recentFiles.filter(f => f.mimeType.startsWith('image/')).slice(0, 6);
+	$: recentVideos = stats.recentFiles.filter(f => f.mimeType.startsWith('video/')).slice(0, 4);
+	$: recentAudio = stats.recentFiles.filter(f => f.mimeType.startsWith('audio/')).slice(0, 4);
+	$: recentDocs = stats.recentFiles.filter(f =>
+		f.mimeType.includes('pdf') || f.mimeType.includes('document') || f.mimeType.includes('word') || f.mimeType.includes('sheet')
+	).slice(0, 4);
 
 	$: user = $auth.user;
 	$: storagePercent = user ? Math.round((user.storageUsed / user.storageQuota) * 100) : 0;
@@ -335,7 +344,45 @@
 					{/if}
 				</section>
 			</div>
-		</main>
+		<!-- Mobile Bottom Navigation -->
+		<nav class="mobile-nav">
+			<a href="/dashboard" class="nav-item active">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+					<polyline points="9,22 9,12 15,12 15,22"/>
+				</svg>
+				<span>Inicio</span>
+			</a>
+			<a href="/files" class="nav-item">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+				</svg>
+				<span>Archivos</span>
+			</a>
+			<a href="/photos" class="nav-item">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+					<circle cx="8.5" cy="8.5" r="1.5"/>
+					<polyline points="21,15 16,10 5,21"/>
+				</svg>
+				<span>Fotos</span>
+			</a>
+			<a href="/videos" class="nav-item">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polygon points="23,7 16,12 23,17"/>
+					<rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+				</svg>
+				<span>Videos</span>
+			</a>
+			<a href="/settings" class="nav-item">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="12" cy="12" r="3"/>
+					<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+				</svg>
+				<span>Mas</span>
+			</a>
+		</nav>
+	</main>
 	{/if}
 </div>
 
@@ -802,6 +849,49 @@
 		font-size: 14px;
 	}
 
+	/* Mobile Bottom Navigation */
+	.mobile-nav {
+		display: none;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background: #ffffff;
+		border-top: 1px solid #e0e0e0;
+		padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+		z-index: 1000;
+		box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+	}
+
+	.mobile-nav .nav-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		padding: 8px 4px;
+		color: #666;
+		text-decoration: none;
+		font-size: 11px;
+		transition: color 0.2s ease;
+	}
+
+	.mobile-nav .nav-item.active {
+		color: #0082c9;
+	}
+
+	.mobile-nav .nav-item:hover {
+		color: #0082c9;
+	}
+
+	.mobile-nav .nav-item svg {
+		transition: transform 0.2s ease;
+	}
+
+	.mobile-nav .nav-item.active svg {
+		transform: scale(1.1);
+	}
+
 	/* Responsive */
 	@media (max-width: 1024px) {
 		.stats-section {
@@ -810,47 +900,198 @@
 	}
 
 	@media (max-width: 768px) {
+		.dashboard {
+			padding-bottom: 80px;
+		}
+
+		.mobile-nav {
+			display: flex;
+		}
+
 		.hero {
-			padding: 40px 16px 30px;
+			padding: 30px 16px 20px;
 		}
 
 		.hero-logo {
-			width: 120px;
-			height: 120px;
+			width: 100px;
+			height: 100px;
+			margin-bottom: 16px;
 		}
 
 		.hero h1 {
-			font-size: 24px;
+			font-size: 22px;
+		}
+
+		.hero p {
+			font-size: 14px;
+		}
+
+		.hero-nav {
+			gap: 8px;
+		}
+
+		.hero-btn {
+			padding: 10px 16px;
+			font-size: 13px;
+		}
+
+		.hero-btn.logout {
+			display: none;
 		}
 
 		.main-content {
-			padding: 0 16px 40px;
+			padding: 0 12px 40px;
+		}
+
+		.storage-card {
+			padding: 16px;
+			border-radius: 16px;
+		}
+
+		.storage-icon {
+			width: 40px;
+			height: 40px;
+		}
+
+		.storage-percent {
+			font-size: 20px;
 		}
 
 		.stats-section {
 			grid-template-columns: repeat(2, 1fr);
-			gap: 12px;
+			gap: 10px;
+			margin-bottom: 24px;
 		}
 
 		.stat-card {
-			padding: 16px;
+			padding: 14px;
+			border-radius: 16px;
 		}
 
 		.stat-icon {
-			width: 48px;
-			height: 48px;
+			width: 44px;
+			height: 44px;
+			margin-bottom: 10px;
+		}
+
+		.stat-icon svg {
+			width: 24px;
+			height: 24px;
 		}
 
 		.stat-value {
-			font-size: 28px;
+			font-size: 24px;
+		}
+
+		.stat-label {
+			font-size: 12px;
+		}
+
+		.quick-section {
+			margin-bottom: 24px;
+		}
+
+		.quick-section h2 {
+			font-size: 16px;
+			margin-bottom: 14px;
+		}
+
+		.quick-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 10px;
+		}
+
+		.quick-item {
+			padding: 14px 10px;
+			border-radius: 14px;
+		}
+
+		.quick-icon {
+			width: 44px;
+			height: 44px;
+			border-radius: 12px;
+		}
+
+		.quick-icon svg {
+			width: 22px;
+			height: 22px;
+		}
+
+		.quick-item span {
+			font-size: 11px;
 		}
 
 		.bottom-section {
 			grid-template-columns: 1fr;
+			gap: 16px;
+		}
+
+		.card-section {
+			padding: 16px;
+			border-radius: 16px;
+		}
+
+		.card-header h2 {
+			font-size: 16px;
+		}
+
+		.file-item {
+			padding: 10px 0;
+		}
+
+		.file-icon {
+			width: 38px;
+			height: 38px;
+		}
+
+		.file-name {
+			font-size: 13px;
+		}
+
+		.file-meta {
+			font-size: 11px;
+		}
+
+		.activity-item {
+			padding: 10px 0;
+		}
+
+		.activity-action {
+			font-size: 13px;
+		}
+
+		.activity-file {
+			font-size: 12px;
+		}
+	}
+
+	@media (max-width: 380px) {
+		.stats-section {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 8px;
+		}
+
+		.stat-card {
+			padding: 12px;
+		}
+
+		.stat-value {
+			font-size: 20px;
 		}
 
 		.quick-grid {
 			grid-template-columns: repeat(3, 1fr);
+			gap: 8px;
+		}
+
+		.quick-item {
+			padding: 12px 8px;
+		}
+
+		.quick-icon {
+			width: 40px;
+			height: 40px;
 		}
 	}
 </style>
