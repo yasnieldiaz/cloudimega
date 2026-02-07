@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 
@@ -6,6 +7,8 @@
 	let password = '';
 	let error = '';
 	let isLoading = false;
+	let canvas: HTMLCanvasElement;
+	let animationId: number;
 
 	async function handleSubmit() {
 		error = '';
@@ -21,27 +24,125 @@
 			error = result.error || 'Error al iniciar sesión';
 		}
 	}
+
+	// Particle Network Animation
+	onMount(() => {
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+
+		let particles: Array<{x: number, y: number, vx: number, vy: number, radius: number}> = [];
+		const particleCount = 80;
+		const connectionDistance = 150;
+		const mouseRadius = 200;
+		let mouse = { x: -1000, y: -1000 };
+
+		function resize() {
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+		}
+
+		function createParticles() {
+			particles = [];
+			for (let i = 0; i < particleCount; i++) {
+				particles.push({
+					x: Math.random() * canvas.width,
+					y: Math.random() * canvas.height,
+					vx: (Math.random() - 0.5) * 0.25,
+					vy: (Math.random() - 0.5) * 0.25,
+					radius: Math.random() * 2 + 1
+				});
+			}
+		}
+
+		function animate() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			// Update and draw particles
+			particles.forEach((p, i) => {
+				// Move
+				p.x += p.vx;
+				p.y += p.vy;
+
+				// Bounce off walls
+				if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+				if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+				// Mouse interaction
+				const dx = mouse.x - p.x;
+				const dy = mouse.y - p.y;
+				const dist = Math.sqrt(dx * dx + dy * dy);
+				if (dist < mouseRadius) {
+					const force = (mouseRadius - dist) / mouseRadius;
+					p.vx -= dx * force * 0.02;
+					p.vy -= dy * force * 0.02;
+				}
+
+				// Draw particle
+				ctx.beginPath();
+				ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+				ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+				ctx.fill();
+
+				// Draw connections
+				for (let j = i + 1; j < particles.length; j++) {
+					const p2 = particles[j];
+					const dx = p.x - p2.x;
+					const dy = p.y - p2.y;
+					const distance = Math.sqrt(dx * dx + dy * dy);
+
+					if (distance < connectionDistance) {
+						const opacity = 1 - (distance / connectionDistance);
+						ctx.beginPath();
+						ctx.moveTo(p.x, p.y);
+						ctx.lineTo(p2.x, p2.y);
+						ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.4})`;
+						ctx.lineWidth = 1;
+						ctx.stroke();
+					}
+				}
+			});
+
+			animationId = requestAnimationFrame(animate);
+		}
+
+		function handleMouseMove(e: MouseEvent) {
+			mouse.x = e.clientX;
+			mouse.y = e.clientY;
+		}
+
+		function handleMouseLeave() {
+			mouse.x = -1000;
+			mouse.y = -1000;
+		}
+
+		window.addEventListener('resize', resize);
+		window.addEventListener('mousemove', handleMouseMove);
+		window.addEventListener('mouseleave', handleMouseLeave);
+
+		resize();
+		createParticles();
+		animate();
+
+		return () => {
+			window.removeEventListener('resize', resize);
+			window.removeEventListener('mousemove', handleMouseMove);
+			window.removeEventListener('mouseleave', handleMouseLeave);
+			if (animationId) cancelAnimationFrame(animationId);
+		};
+	});
+
+	onDestroy(() => {
+		if (animationId) cancelAnimationFrame(animationId);
+	});
 </script>
 
 <div class="auth-page">
-	<!-- Animated Background -->
-	<div class="animated-bg">
-		<div class="wave wave1"></div>
-		<div class="wave wave2"></div>
-		<div class="wave wave3"></div>
-		<div class="floating-shapes">
-			<div class="shape shape1"></div>
-			<div class="shape shape2"></div>
-			<div class="shape shape3"></div>
-			<div class="shape shape4"></div>
-			<div class="shape shape5"></div>
-		</div>
-	</div>
+	<canvas bind:this={canvas} class="particle-canvas"></canvas>
 
 	<div class="auth-container">
 		<div class="auth-brand">
 			<div class="brand-logo">
-				<img src="/logo.png" alt="CloudImega" width="120" height="120" />
+				<img src="/logo.png" alt="CloudImega" width="200" height="200" />
 			</div>
 			<h1>CloudImega</h1>
 			<p>Tu nube personal, rapida y segura</p>
@@ -122,130 +223,16 @@
 		padding: 2rem;
 		position: relative;
 		overflow: hidden;
-		background: linear-gradient(135deg, #0a1628 0%, #1a365d 50%, #0d2137 100%);
+		background: linear-gradient(135deg, #1e3a5f 0%, #3b82f6 50%, #8b5cf6 100%);
 	}
 
-	/* Animated Background */
-	.animated-bg {
+	.particle-canvas {
 		position: absolute;
 		top: 0;
 		left: 0;
 		width: 100%;
 		height: 100%;
-		overflow: hidden;
 		z-index: 0;
-	}
-
-	.wave {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		width: 200%;
-		height: 100%;
-		background: linear-gradient(180deg, transparent 50%, rgba(59, 130, 246, 0.1) 100%);
-		border-radius: 100% 100% 0 0;
-		animation: wave 8s ease-in-out infinite;
-	}
-
-	.wave1 {
-		background: linear-gradient(180deg, transparent 60%, rgba(59, 130, 246, 0.15) 100%);
-		animation-delay: 0s;
-		animation-duration: 7s;
-	}
-
-	.wave2 {
-		background: linear-gradient(180deg, transparent 65%, rgba(37, 99, 235, 0.1) 100%);
-		animation-delay: -2s;
-		animation-duration: 10s;
-	}
-
-	.wave3 {
-		background: linear-gradient(180deg, transparent 70%, rgba(96, 165, 250, 0.08) 100%);
-		animation-delay: -4s;
-		animation-duration: 13s;
-	}
-
-	@keyframes wave {
-		0%, 100% {
-			transform: translateX(-50%) translateY(0) rotate(0deg);
-		}
-		50% {
-			transform: translateX(-30%) translateY(-20px) rotate(2deg);
-		}
-	}
-
-	/* Floating Shapes */
-	.floating-shapes {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-	}
-
-	.shape {
-		position: absolute;
-		border-radius: 50%;
-		background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.1));
-		filter: blur(1px);
-		animation: float 15s ease-in-out infinite;
-	}
-
-	.shape1 {
-		width: 300px;
-		height: 300px;
-		top: -100px;
-		right: -50px;
-		animation-delay: 0s;
-	}
-
-	.shape2 {
-		width: 200px;
-		height: 200px;
-		bottom: 10%;
-		left: -50px;
-		animation-delay: -3s;
-		animation-duration: 18s;
-	}
-
-	.shape3 {
-		width: 150px;
-		height: 150px;
-		top: 30%;
-		right: 10%;
-		animation-delay: -5s;
-		animation-duration: 12s;
-	}
-
-	.shape4 {
-		width: 100px;
-		height: 100px;
-		bottom: 30%;
-		right: 20%;
-		animation-delay: -7s;
-		animation-duration: 20s;
-	}
-
-	.shape5 {
-		width: 80px;
-		height: 80px;
-		top: 20%;
-		left: 15%;
-		animation-delay: -2s;
-		animation-duration: 16s;
-	}
-
-	@keyframes float {
-		0%, 100% {
-			transform: translateY(0) rotate(0deg) scale(1);
-			opacity: 0.6;
-		}
-		33% {
-			transform: translateY(-30px) rotate(120deg) scale(1.1);
-			opacity: 0.8;
-		}
-		66% {
-			transform: translateY(20px) rotate(240deg) scale(0.9);
-			opacity: 0.5;
-		}
 	}
 
 	.auth-container {
@@ -262,7 +249,7 @@
 
 	.brand-logo {
 		margin-bottom: 1rem;
-		filter: drop-shadow(0 4px 20px rgba(59, 130, 246, 0.4));
+		filter: drop-shadow(0 4px 20px rgba(59, 130, 246, 0.5));
 	}
 
 	.brand-logo img {
@@ -278,7 +265,7 @@
 	}
 
 	.auth-brand p {
-		color: rgba(255, 255, 255, 0.8);
+		color: rgba(255, 255, 255, 0.9);
 		font-size: 1rem;
 	}
 
@@ -359,7 +346,7 @@
 	}
 
 	.btn-primary {
-		background: linear-gradient(135deg, #3b82f6, #2563eb);
+		background: linear-gradient(135deg, #3b82f6, #8b5cf6);
 		color: white;
 		box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
 	}
@@ -415,7 +402,7 @@
 
 	.auth-footer {
 		margin-top: 2rem;
-		color: rgba(255, 255, 255, 0.6);
+		color: rgba(255, 255, 255, 0.7);
 		font-size: 0.75rem;
 	}
 

@@ -15,6 +15,10 @@
 	let viewMode: 'list' | 'grid' = 'list';
 	let sortBy: 'name' | 'size' | 'date' = 'name';
 	let sortAsc = true;
+	// Delete progress
+	let isDeleting = false;
+	let deleteProgress = 0;
+	let deleteTotal = 0;
 
 	// Modals
 	let showNewFolderModal = false;
@@ -60,7 +64,16 @@
 			if (!state.isLoading && state.isAuthenticated && !initialLoadDone) {
 				console.log('Loading files now!');
 				initialLoadDone = true;
-				files.loadRoot();
+				const view = get(page).url.searchParams.get("view");
+				if (view === "trash") {
+					files.loadTrash();
+				} else if (view === "favorites") {
+					files.loadFavorites();
+				} else if (view === "recent") {
+					files.loadRecent();
+				} else {
+					files.loadRoot();
+				}
 				files.loadTags();
 			}
 		});
@@ -72,7 +85,16 @@
 	function handleSidebarClick(view: string) {
 		switch (view) {
 			case 'all':
-				files.loadRoot();
+				const view = get(page).url.searchParams.get("view");
+				if (view === "trash") {
+					files.loadTrash();
+				} else if (view === "favorites") {
+					files.loadFavorites();
+				} else if (view === "recent") {
+					files.loadRecent();
+				} else {
+					files.loadRoot();
+				}
 				break;
 			case 'recent':
 				files.loadRecent();
@@ -95,7 +117,16 @@
 			if (query.trim()) {
 				files.search(query);
 			} else {
-				files.loadRoot();
+				const view = get(page).url.searchParams.get("view");
+				if (view === "trash") {
+					files.loadTrash();
+				} else if (view === "favorites") {
+					files.loadFavorites();
+				} else if (view === "recent") {
+					files.loadRecent();
+				} else {
+					files.loadRoot();
+				}
 			}
 		}, 300);
 	}
@@ -418,6 +449,41 @@
 		selectedItems = selectedItems;
 	}
 
+
+	async function deleteSelected() {
+		if (selectedItems.size === 0) return;
+		const inTrash = $files.viewMode === 'trash';
+		const msg = inTrash 
+			? `¿Eliminar permanentemente ${selectedItems.size} elemento(s)? Esta acción no se puede deshacer.`
+			: `¿Mover ${selectedItems.size} elemento(s) a la papelera?`;
+		if (!confirm(msg)) return;
+		
+		isDeleting = true;
+		deleteTotal = selectedItems.size;
+		deleteProgress = 0;
+		
+		const itemsToDelete = Array.from(selectedItems);
+		for (const id of itemsToDelete) {
+			if (inTrash) {
+				await files.permanentDeleteFile(id);
+			} else {
+				const isFolder = $files.folders.some(f => f.id === id);
+				if (isFolder) {
+					await files.deleteFolder(id);
+				} else {
+					await files.deleteFile(id);
+				}
+			}
+			deleteProgress++;
+			selectedItems.delete(id);
+			selectedItems = selectedItems;
+		}
+		
+		isDeleting = false;
+		deleteProgress = 0;
+		deleteTotal = 0;
+	}
+
 	async function handleLogout() {
 		await auth.logout();
 		goto('/auth/login');
@@ -461,12 +527,12 @@
 
 		<nav class="sidebar-nav">
 			<a href="/dashboard" class="nav-item dashboard-link">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<rect x="3" y="3" width="7" height="7"/>
 					<rect x="14" y="3" width="7" height="7"/>
 					<rect x="14" y="14" width="7" height="7"/>
 					<rect x="3" y="14" width="7" height="7"/>
-				</svg>
+				</svg></span>
 				Dashboard
 			</a>
 
@@ -477,9 +543,9 @@
 				class:active={$files.viewMode === 'all'}
 				on:click={() => handleSidebarClick('all')}
 			>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-				</svg>
+				</svg></span>
 				Todos los archivos
 			</button>
 
@@ -488,10 +554,10 @@
 				class:active={$files.viewMode === 'recent'}
 				on:click={() => handleSidebarClick('recent')}
 			>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #3b82f6, #06b6d4);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<circle cx="12" cy="12" r="10"/>
 					<polyline points="12 6 12 12 16 14"/>
-				</svg>
+				</svg></span>
 				Reciente
 			</button>
 
@@ -500,9 +566,9 @@
 				class:active={$files.viewMode === 'favorites'}
 				on:click={() => handleSidebarClick('favorites')}
 			>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #f59e0b, #f97316);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-				</svg>
+				</svg></span>
 				Favoritos
 			</button>
 
@@ -511,13 +577,13 @@
 				class:active={$files.viewMode === 'shared'}
 				on:click={() => handleSidebarClick('shared')}
 			>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #10b981, #059669);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<circle cx="18" cy="5" r="3"/>
 					<circle cx="6" cy="12" r="3"/>
 					<circle cx="18" cy="19" r="3"/>
 					<line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
 					<line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-				</svg>
+				</svg></span>
 				Compartidos
 			</button>
 
@@ -526,10 +592,10 @@
 				class:active={$files.viewMode === 'trash'}
 				on:click={() => handleSidebarClick('trash')}
 			>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #ef4444, #ec4899);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<polyline points="3 6 5 6 21 6"/>
 					<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-				</svg>
+				</svg></span>
 				Papelera
 			</button>
 
@@ -554,85 +620,85 @@
 			<span class="nav-label">Aplicaciones</span>
 
 			<a href="/photos" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #ec4899, #f43f5e);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
 					<circle cx="8.5" cy="8.5" r="1.5"/>
 					<polyline points="21 15 16 10 5 21"/>
-				</svg>
+				</svg></span>
 				Fotos
 			</a>
 
 			<a href="/documents" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
 					<polyline points="14 2 14 8 20 8"/>
 					<line x1="16" y1="13" x2="8" y2="13"/>
 					<line x1="16" y1="17" x2="8" y2="17"/>
-				</svg>
+				</svg></span>
 				Documentos
 			</a>
 
 			<a href="/videos" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<polygon points="23 7 16 12 23 17 23 7"/>
 					<rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-				</svg>
+				</svg></span>
 				Videos
 			</a>
 
 			<a href="/audio" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<path d="M9 18V5l12-2v13"/>
 					<circle cx="6" cy="18" r="3"/>
 					<circle cx="18" cy="16" r="3"/>
-				</svg>
+				</svg></span>
 				Audio
 			</a>
 
 			<a href="/notes" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
 					<polyline points="14 2 14 8 20 8"/>
 					<line x1="16" y1="13" x2="8" y2="13"/>
 					<line x1="16" y1="17" x2="8" y2="17"/>
-				</svg>
+				</svg></span>
 				Notas
 			</a>
 
 			<a href="/calendar" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #f43f5e, #e11d48);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
 					<line x1="16" y1="2" x2="16" y2="6"/>
 					<line x1="8" y1="2" x2="8" y2="6"/>
 					<line x1="3" y1="10" x2="21" y2="10"/>
-				</svg>
+				</svg></span>
 				Calendario
 			</a>
 
 			<a href="/contacts" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #64748b, #475569);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
 					<circle cx="12" cy="7" r="4"/>
-				</svg>
+				</svg></span>
 				Contactos
 			</a>
 
 			<div class="nav-divider"></div>
 			<a href="/settings" class="nav-item">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<span class="nav-icon" style="background: linear-gradient(135deg, #94a3b8, #64748b);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 					<circle cx="12" cy="12" r="3"/>
 					<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-				</svg>
+				</svg></span>
 				Configuracion
 			</a>
 
 			{#if $auth.user?.isAdmin}
 				<div class="nav-divider"></div>
 				<a href="/admin" class="nav-item admin">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<span class="nav-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
 						<circle cx="12" cy="12" r="3"/>
 						<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-					</svg>
+					</svg></span>
 					Administración
 				</a>
 			{/if}
@@ -696,7 +762,7 @@
 						class:active={i === $files.path.length - 1}
 						on:click={() => files.navigateTo(folder)}
 					>
-						{folder.isRoot ? 'Archivos' : folder.name}
+						{folder.name === 'Root' || (i === 0 && folder.isRoot !== false) ? 'Archivos' : folder.name}
 					</button>
 					{#if i < $files.path.length - 1}
 						<span class="breadcrumb-sep">/</span>
@@ -705,6 +771,15 @@
 			</div>
 
 			<div class="header-actions">
+				{#if selectedItems.size > 0}
+				<button class="btn btn-danger" on:click={deleteSelected}>
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="3 6 5 6 21 6"/>
+						<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+					</svg>
+					Eliminar ({selectedItems.size})
+				</button>
+				{/if}
 				<button class="btn btn-primary" on:click={() => uploadInput.click()} disabled={isUploading}>
 					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -789,7 +864,25 @@
 			<div class="error-state">
 				<p>Error: {$files.error}</p>
 			</div>
-		{:else if viewMode === 'list'}
+		{:else}
+		<!-- Bulk Actions Toolbar -->
+		{#if selectedItems.size > 0}
+			<div class="bulk-actions-bar">
+				<span class="selected-count">{selectedItems.size} seleccionado(s)</span>
+				<button class="btn btn-danger" on:click={deleteSelected}>
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="3 6 5 6 21 6"/>
+						<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+					</svg>
+					Eliminar todo
+				</button>
+				<button class="btn btn-secondary" on:click={() => { selectedItems.clear(); selectedItems = selectedItems; }}>
+					Cancelar
+				</button>
+			</div>
+		{/if}
+
+		{#if viewMode === 'list'}
 			<!-- List View -->
 			<div class="file-table">
 				<div class="table-header">
@@ -1094,6 +1187,7 @@
 					</div>
 				{/each}
 			</div>
+		{/if}
 		{/if}
 	</main>
 </div>
@@ -1581,6 +1675,25 @@
 	</div>
 {/if}
 
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-nav">
+	<a href="/dashboard" class="nav-item">
+		<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+		<span>Inicio</span>
+	</a>
+	<a href="/files" class="nav-item active">
+		<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+		<span>Archivos</span>
+	</a>
+	<a href="/photos" class="nav-item">
+		<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+		<span>Fotos</span>
+	</a>
+	<a href="/files?view=trash" class="nav-item">
+		<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+		<span>Papelera</span>
+	</a>
+</nav>
 <style>
 	.app-layout {
 		display: flex;
@@ -1659,8 +1772,9 @@
 	}
 
 	.nav-item.active {
-		background: var(--primary);
-		color: white;
+		background: var(--bg-hover);
+		color: var(--text);
+		font-weight: 600;
 	}
 
 	.nav-item.admin {
@@ -1682,6 +1796,28 @@
 		color: var(--primary-light);
 	}
 
+
+	/* Colored nav icons */
+	.nav-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		min-width: 32px;
+		border-radius: 8px;
+		box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+		transition: transform 0.15s, box-shadow 0.15s;
+	}
+
+	.nav-item:hover .nav-icon {
+		transform: scale(1.08);
+		box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+	}
+
+	.nav-item.active .nav-icon {
+		box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+	}
 	.nav-divider {
 		height: 1px;
 		background: var(--border);
@@ -2807,5 +2943,94 @@
 		.col-actions {
 			opacity: 1;
 		}
+	}
+
+	/* Bulk Actions Bar */
+	.bulk-actions-bar {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		background: linear-gradient(135deg, #3b82f6, #2563eb);
+		border-radius: 12px;
+		margin-bottom: 1rem;
+		box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+	}
+
+	.bulk-actions-bar .selected-count {
+		color: white;
+		font-weight: 600;
+		flex: 1;
+	}
+
+	.bulk-actions-bar .btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		border-radius: 8px;
+		border: none;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.bulk-actions-bar .btn-danger {
+		background: #ef4444;
+		color: white;
+	}
+
+	.bulk-actions-bar .btn-danger:hover {
+		background: #dc2626;
+		transform: translateY(-1px);
+	}
+
+	.bulk-actions-bar .btn-secondary {
+		background: rgba(255, 255, 255, 0.2);
+		color: white;
+	}
+
+	.bulk-actions-bar .btn-secondary:hover {
+		background: rgba(255, 255, 255, 0.3);
+	}
+
+
+	/* Mobile Bottom Navigation */
+	.mobile-nav {
+		display: none;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background: white;
+		border-top: 1px solid #e5e7eb;
+		padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+		z-index: 1000;
+		box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+	}
+	.nav-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		color: #6b7280;
+		text-decoration: none;
+		font-size: 11px;
+		padding: 4px 12px;
+		border-radius: 8px;
+		transition: all 0.2s;
+	}
+	.nav-item:hover, .nav-item.active {
+		color: #6366f1;
+		background: #eef2ff;
+	}
+	.nav-item svg {
+		width: 24px;
+		height: 24px;
+	}
+	@media (max-width: 768px) {
+		.mobile-nav { display: flex; justify-content: space-around; }
+		.main-content { padding-bottom: 80px; }
 	}
 </style>
