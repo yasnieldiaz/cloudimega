@@ -1,0 +1,42 @@
+<script lang="ts">
+	import { auth } from '$lib/stores/auth';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+
+	$: if (!$auth.isLoading) {
+		if ($auth.isAuthenticated) {
+			goto('/dashboard');
+		} else {
+			goto('/auth/login');
+		}
+	}
+</script>
+
+<div class="loading-container">
+	<div class="spinner"></div>
+	<p>Loading CloudImega...</p>
+</div>
+
+<style>
+	.loading-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-height: 100vh;
+		gap: 20px;
+	}
+
+	.spinner {
+		width: 50px;
+		height: 50px;
+		border: 4px solid var(--border);
+		border-top-color: var(--primary);
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+</style>

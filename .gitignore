@@ -1,0 +1,21 @@
+node_modules/
+.svelte-kit/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+dist/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+backend/data/
+
+# User uploads
+backend/storage/
+
+# macOS
+._*
