@@ -1581,6 +1581,46 @@
 	</div>
 {/if}
 
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-nav">
+	<a href="/dashboard" class="nav-item">
+		<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+			<polyline points="9,22 9,12 15,12 15,22"/>
+		</svg>
+		<span>Inicio</span>
+	</a>
+	<a href="/files" class="nav-item active">
+		<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+		</svg>
+		<span>Archivos</span>
+	</a>
+	<a href="/photos" class="nav-item">
+		<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+			<circle cx="8.5" cy="8.5" r="1.5"/>
+			<polyline points="21,15 16,10 5,21"/>
+		</svg>
+		<span>Fotos</span>
+	</a>
+	<a href="/videos" class="nav-item">
+		<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polygon points="23,7 16,12 23,17"/>
+			<rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+		</svg>
+		<span>Videos</span>
+	</a>
+	<button class="nav-item" on:click={() => document.querySelector('.sidebar')?.classList.toggle('mobile-open')}>
+		<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<line x1="3" y1="12" x2="21" y2="12"/>
+			<line x1="3" y1="6" x2="21" y2="6"/>
+			<line x1="3" y1="18" x2="21" y2="18"/>
+		</svg>
+		<span>Menu</span>
+	</button>
+</nav>
+
 <style>
 	.app-layout {
 		display: flex;
@@ -2794,10 +2834,83 @@
 		text-align: center;
 	}
 
+	/* Mobile Bottom Navigation */
+	.mobile-nav {
+		display: none;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background: #ffffff;
+		border-top: 1px solid var(--border);
+		padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+		z-index: 1000;
+		box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+	}
+
+	.mobile-nav .nav-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		padding: 8px 4px;
+		color: #666;
+		text-decoration: none;
+		font-size: 10px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: color 0.2s ease;
+	}
+
+	.mobile-nav .nav-item.active {
+		color: var(--primary);
+	}
+
+	.mobile-nav .nav-item:hover {
+		color: var(--primary);
+	}
+
 	/* Responsive */
 	@media (max-width: 768px) {
+		.app-layout {
+			padding-bottom: 70px;
+		}
+
+		.mobile-nav {
+			display: flex;
+		}
+
 		.sidebar {
-			display: none;
+			position: fixed;
+			left: -100%;
+			top: 0;
+			bottom: 70px;
+			width: 280px;
+			z-index: 999;
+			transition: left 0.3s ease;
+			box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+		}
+
+		.sidebar.mobile-open {
+			left: 0;
+		}
+
+		.main-area {
+			margin-left: 0;
+		}
+
+		.header {
+			padding: 12px;
+		}
+
+		.header h1 {
+			font-size: 18px;
+		}
+
+		.breadcrumb {
+			font-size: 12px;
 		}
 
 		.col-size, .col-date {
@@ -2806,6 +2919,49 @@
 
 		.col-actions {
 			opacity: 1;
+		}
+
+		.file-row {
+			padding: 10px 12px;
+		}
+
+		.file-icon-wrapper {
+			width: 36px;
+			height: 36px;
+		}
+
+		.file-name {
+			font-size: 13px;
+		}
+
+		.toolbar {
+			padding: 8px 12px;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+
+		.btn {
+			padding: 8px 12px;
+			font-size: 13px;
+		}
+
+		.search-input {
+			font-size: 14px;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.toolbar-left {
+			width: 100%;
+		}
+
+		.toolbar-right {
+			width: 100%;
+			justify-content: flex-end;
+		}
+
+		.view-toggle {
+			display: none;
 		}
 	}
 </style>
